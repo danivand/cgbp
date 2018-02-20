@@ -8,8 +8,8 @@
 
 # use bmake instead.
 
-CFLAGS = -D_DEFAULT_SOURCE $(DEV_CFLAGS)
-LDFLAGS = $(DEV_LDFLAGS)
+CFLAGS = -D_DEFAULT_SOURCE $(PROD_CFLAGS)
+LDFLAGS = $(PROD_LDFLAGS)
 LDLIBS = -lrt
 LDLIBS_xlib = -lX11
 
@@ -44,7 +44,7 @@ RM_FILES += $(target:C/$/.o/)
 .for drv in $(DRIVERS)
 bin_$(target)_$(drv) = $(target:C/$/_$(drv)/)
 $(bin_$(target)_$(drv)): cgbp.o $(target:C/$/.o/) $(drv:C/$/.o/)
-	$(LINK) $(LDLIBS_$(drv))
+	$(LINK) $(LDLIBS_$(drv)) $(LDLIBS_$(target))
 RM_FILES += $(bin_$(target)_$(drv))
 BIN_TARGETS += $(bin_$(target)_$(drv))
 .endfor # drv in $(DRIVERS)
