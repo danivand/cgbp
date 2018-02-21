@@ -88,7 +88,7 @@ int metaballs_init(struct metaballs *m, struct cgbp_size size) {
 		m->balls[i].y = rand() % size.h;
 		m->balls[i].speed_x = rand() % 20;
 		m->balls[i].speed_y = rand() % 20;
-		if(metaballs_init_dist_cache(&m->balls[i], 40 + rand() % 80, size) < 0)
+		if(metaballs_init_dist_cache(&m->balls[i], 30 + rand() % 60, size) < 0)
 			return -1;
 	}
 	metaballs_init_color(m);
