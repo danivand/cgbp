@@ -83,6 +83,8 @@ int metaballs_init(struct metaballs *m, struct cgbp_size size) {
 	size_t i;
 	m->balls[0].x = 600;
 	m->balls[0].y = 600;
+	for(i = 0; i < NUM_BALLS; i++)
+		m->balls[i].dist_cache = NULL;
 	for(i = 0; i < NUM_BALLS; i++) {
 		m->balls[i].x = rand() % size.w;
 		m->balls[i].y = rand() % size.h;
@@ -164,7 +166,8 @@ int metaballs_action(struct cgbp *c, void *data, char r) {
 void metaballs_cleanup(struct metaballs *m) {
 	size_t i;
 	for(i = 0; i < NUM_BALLS; i++)
-		free(m->balls[i].dist_cache);
+		if(m->balls[i].dist_cache != NULL)
+			free(m->balls[i].dist_cache);
 	return;
 }
 
