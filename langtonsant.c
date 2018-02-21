@@ -25,7 +25,7 @@ int nonneg_mod(int num, int div) {
 	return num;
 }
 
-int langtonsant_setup(struct langtonsant *l, struct cgbp_size size) {
+int langtonsant_init(struct langtonsant *l, struct cgbp_size size) {
 	l->x = size.w / 2;
 	l->y = size.h / 2;
 	l->direction = 0;
@@ -94,7 +94,7 @@ int main(void) {
 	if(cgbp_init(&c) < 0)
 		goto error;
 
-	langtonsant_setup(&l, driver.size(c.driver_data));
+	langtonsant_init(&l, driver.size(c.driver_data));
 	if(cgbp_main(&c, &l, cb) == 0)
 		ret = EXIT_SUCCESS;
 error:
