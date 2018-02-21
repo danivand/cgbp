@@ -1,0 +1,9 @@
+cgbp.o
+fbdev.o
+langtonsant_fbdev
+langtonsant.o
+langtonsant_xlib
+metaballs_fbdev
+metaballs.o
+metaballs_xlib
+xlib.o
