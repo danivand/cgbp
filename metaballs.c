@@ -1,5 +1,5 @@
 
-/* metaballs2.c
+/* metaballs.c
  *
  * Copyright (c) 2018, mar77i <mar77i at protonmail dot ch>
  *
