@@ -13,6 +13,8 @@
 #define TO_RGB(r, g, b) \
 	(((uint32_t)(r) << 16) | ((uint32_t)(g) << 8) | (uint32_t)(b))
 
+// http://www.jstor.org/stable/2691465?origin=crossref&seq=1#page_scan_tab_contents
+
 struct epicycle {
 	size_t cx, cy, scale, step;
 };
@@ -63,8 +65,6 @@ int epicycles_action(struct cgbp *c, void *data, char r) {
 	(void)data;
 }
 
-
-// http://www.jstor.org/stable/2691465?origin=crossref&seq=1#page_scan_tab_contents
 
 int main(void) {
 	struct cgbp c;
