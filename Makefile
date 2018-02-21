@@ -12,9 +12,10 @@ CFLAGS = -D_DEFAULT_SOURCE $(PROD_CFLAGS)
 LDFLAGS = $(PROD_LDFLAGS)
 LDLIBS = -lrt
 LDLIBS_xlib = -lX11
+LDLIBS_epicycles = -lm
 
 DRIVERS = fbdev xlib
-TARGETS = langtonsant metaballs
+TARGETS = langtonsant metaballs epicycles
 BIN_TARGETS =
 
 RM_FILES = cgbp.o

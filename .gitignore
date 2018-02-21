@@ -1,4 +1,7 @@
 cgbp.o
+epicycles_fbdev
+epicycles.o
+epicycles_xlib
 fbdev.o
 langtonsant_fbdev
 langtonsant.o
