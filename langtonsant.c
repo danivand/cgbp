@@ -33,13 +33,13 @@ int langtonsant_init(struct langtonsant *l, struct cgbp_size size) {
 }
 
 void langtonsant_step(struct cgbp *c, struct langtonsant *l) {
-	struct cgbp_size size = driver.size(c->driver_data);
-	if(driver.get_pixel(c->driver_data, l->x, l->y) == 0) {
+	struct cgbp_size size = driver.size(c);
+	if(driver.get_pixel(c, l->x, l->y) == 0) {
 		l->direction++;
-		driver.set_pixel(c->driver_data, l->x, l->y, 0xffffff);
+		driver.set_pixel(c, l->x, l->y, 0xffffff);
 	} else {
 		l->direction--;
-		driver.set_pixel(c->driver_data, l->x, l->y, 0);
+		driver.set_pixel(c, l->x, l->y, 0);
 	}
 	switch(nonneg_mod(l->direction, 4)) {
 	case 0:
@@ -94,7 +94,7 @@ int main(void) {
 	if(cgbp_init(&c) < 0)
 		goto error;
 
-	langtonsant_init(&l, driver.size(c.driver_data));
+	langtonsant_init(&l, driver.size(&c));
 	if(cgbp_main(&c, &l, cb) == 0)
 		ret = EXIT_SUCCESS;
 error:

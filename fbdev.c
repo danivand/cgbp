@@ -40,16 +40,17 @@ static inline ssize_t fbdev_write_term(const char *str, size_t len) {
 	return ret;
 }
 
-void fbdev_cleanup(void *data);
+void fbdev_cleanup(struct cgbp *c);
 
-void *fbdev_init(void) {
+int fbdev_init(struct cgbp *c) {
 	struct fbdev *f = malloc(sizeof *f);
 	size_t buffer_size;
 	tcflag_t lflag_orig;
 	if(f == NULL) {
 		perror("malloc");
-		return NULL;
+		return -1;
 	}
+	c->driver_data = f;
 
 	f->fbfd = open("/dev/fb0", O_RDWR);
 	if(f->fbfd < 0) {
@@ -96,15 +97,14 @@ void *fbdev_init(void) {
 		goto error;
 	}
 	f->tc.c_lflag = lflag_orig;
-	return f;
+	return 0;
 error:
-	fbdev_cleanup(f);
-	return NULL;
+	fbdev_cleanup(c);
+	return -1;
 }
 
 struct cgbp_driver driver;
 
-int (*update)(struct cgbp*, void*, struct cgbp_callbacks);
 int fbdev_update(struct cgbp *c, void *cb_data, struct cgbp_callbacks cb) {
 	struct fbdev *f = c->driver_data;
 	char r;
@@ -118,8 +118,8 @@ int fbdev_update(struct cgbp *c, void *cb_data, struct cgbp_callbacks cb) {
 	return 0;
 }
 
-void fbdev_cleanup(void *data) {
-	struct fbdev *f = data;
+void fbdev_cleanup(struct cgbp *c) {
+	struct fbdev *f = c->driver_data;
 	if(f->fbmm != NULL) {
 		memset(f->fbmm, 0, f->vinfo.yres * f->finfo.line_length);
 		munmap(f->fbmm, f->vinfo.yres * f->finfo.line_length);
@@ -138,8 +138,8 @@ void fbdev_cleanup(void *data) {
 	free(f);
 }
 
-uint32_t fbdev_get_pixel(void *data, size_t x, size_t y) {
-	struct fbdev *f = data;
+uint32_t fbdev_get_pixel(struct cgbp *c, size_t x, size_t y) {
+	struct fbdev *f = c->driver_data;
 	size_t bytes_pp = f->vinfo.bits_per_pixel / CHAR_BIT;
 	size_t base = y * f->finfo.line_length + x * bytes_pp;
 	size_t value = f->data[base], i;
@@ -150,8 +150,8 @@ uint32_t fbdev_get_pixel(void *data, size_t x, size_t y) {
 	return value;
 }
 
-void fbdev_set_pixel(void *data, size_t x, size_t y, uint32_t color) {
-	struct fbdev *f = data;
+void fbdev_set_pixel(struct cgbp *c, size_t x, size_t y, uint32_t color) {
+	struct fbdev *f = c->driver_data;
 	size_t bytes_pp = f->vinfo.bits_per_pixel / CHAR_BIT;
 	size_t base = y * f->finfo.line_length + x * bytes_pp, i;
 	if(x > f->vinfo.xres || y > f->vinfo.yres)
@@ -160,11 +160,9 @@ void fbdev_set_pixel(void *data, size_t x, size_t y, uint32_t color) {
 		f->data[base + i] = color >> (8 * i);
 }
 
-struct cgbp_size fbdev_size(void *data) {
-	return (struct cgbp_size){
-		.w = ((struct fbdev*)data)->vinfo.xres,
-		.h = ((struct fbdev*)data)->vinfo.yres,
-	};
+struct cgbp_size fbdev_size(struct cgbp *c) {
+	struct fbdev *f = c->driver_data;
+	return (struct cgbp_size){ f->vinfo.xres, f->vinfo.yres };
 }
 
 struct cgbp_driver driver = {

@@ -32,8 +32,6 @@ struct xlib {
 	uint8_t cmap_set: 1, win_set: 1, gc_set: 1;
 };
 
-void xlib_cleanup(void *data);
-
 static inline int setup_input(struct xlib *x) {
 	x->xim = XOpenIM(x->disp, NULL, NULL, NULL);
 	if(x->xim != NULL)
@@ -68,15 +66,18 @@ void invisible_cursor(struct xlib *x) {
 	XFreePixmap(x->disp, p);
 }
 
-void *xlib_init(void) {
+void xlib_cleanup(struct cgbp *c);
+
+int xlib_init(struct cgbp *c) {
 	struct xlib *x = malloc(sizeof *x);
 	Window root;
 	XWindowAttributes attr;
 	size_t bytesize, i;
 	if(x == NULL) {
 		perror("malloc");
-		return NULL;
+		return -1;
 	}
+	c->driver_data = x;
 	x->cmap_set = 0;
 	x->win_set = 0;
 	x->gc_set = 0;
@@ -86,8 +87,7 @@ void *xlib_init(void) {
 	x->disp = XOpenDisplay(NULL);
 	if(x->disp == NULL) {
 		fprintf(stderr, "Error: failed to open Display.\n");
-		xlib_cleanup(x);
-		return NULL;
+		goto error;
 	}
 	x->scr = DefaultScreen(x->disp);
 	if(XMatchVisualInfo(x->disp, x->scr, BITDEPTH, TrueColor, &x->vinfo) == 0) {
@@ -143,10 +143,10 @@ void *xlib_init(void) {
 	if(setup_input(x) < 0)
 		goto error;
 	invisible_cursor(x);
-	return x;
+	return 0;
 error:
-	xlib_cleanup(x);
-	return NULL;
+	xlib_cleanup(c);
+	return -1;
 }
 
 static inline int handle_events(struct cgbp *c, void *cb_data, XEvent *ev,
@@ -191,8 +191,8 @@ int xlib_update(struct cgbp *c, void *cb_data, struct cgbp_callbacks cb) {
 	return 0;
 }
 
-void xlib_cleanup(void *data) {
-	struct xlib *x = data;
+void xlib_cleanup(struct cgbp *c) {
+	struct xlib *x = c->driver_data;
 	if(x->xic != NULL)
 		XDestroyIC(x->xic);
 	if(x->xim != NULL)
@@ -210,8 +210,8 @@ void xlib_cleanup(void *data) {
 	free(x);
 }
 
-uint32_t xlib_get_pixel(void *data, size_t cx, size_t cy) {
-	struct xlib *x = data;
+uint32_t xlib_get_pixel(struct cgbp *c, size_t cx, size_t cy) {
+	struct xlib *x = c->driver_data;
 	size_t i, bytes_per_pixel = x->img->bits_per_pixel / CHAR_BIT, px;
 	uint32_t value;
 	px = cy * x->img->bytes_per_line + cx * bytes_per_pixel;
@@ -220,8 +220,8 @@ uint32_t xlib_get_pixel(void *data, size_t cx, size_t cy) {
 	return value & 0xffffff;
 }
 
-void xlib_set_pixel(void *data, size_t cx, size_t cy, uint32_t color) {
-	struct xlib *x = data;
+void xlib_set_pixel(struct cgbp *c, size_t cx, size_t cy, uint32_t color) {
+	struct xlib *x = c->driver_data;
 	size_t i, bytes_per_pixel = x->img->bits_per_pixel / CHAR_BIT, px;
 	px = cy * x->img->bytes_per_line + cx * bytes_per_pixel;
 	color = 0xff000000 | (color & 0xffffff);
@@ -229,12 +229,9 @@ void xlib_set_pixel(void *data, size_t cx, size_t cy, uint32_t color) {
 		x->img->data[px + i] = color >> (8 * i);
 }
 
-struct cgbp_size xlib_size(void *data) {
-	struct xlib *x = data;
-	return (struct cgbp_size){
-		x->img->width,
-		x->img->height,
-	};
+struct cgbp_size xlib_size(struct cgbp *c) {
+	struct xlib *x = c->driver_data;
+	return (struct cgbp_size){ x->img->width, x->img->height };
 }
 
 struct cgbp_driver driver = {

@@ -48,9 +48,7 @@ int cgbp_init(struct cgbp *c) {
 	c->driver_data = NULL;
 	c->timer_set = 0;
 	c->running = 1;
-	if(driver.init != NULL)
-		c->driver_data = driver.init();
-	if(c->driver_data == NULL) {
+	if(driver.init != NULL && driver.init(c) < 0) {
 		cgbp_cleanup(c);
 		return -1;
 	}
@@ -126,7 +124,7 @@ void cgbp_cleanup(struct cgbp *c) {
 	if(c->timer_set)
 		timer_delete(c->timerid);
 	if(c->driver_data != NULL)
-		driver.cleanup(c->driver_data);
+		driver.cleanup(c);
 
 	if(clock_gettime(CLOCK_MONOTONIC, &ts) < 0) {
 		perror("clock_gettime");

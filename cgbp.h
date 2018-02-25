@@ -25,12 +25,12 @@ struct cgbp_callbacks {
 };
 
 extern struct cgbp_driver {
-	void *(*init)(void);
+	int (*init)(struct cgbp*);
 	int (*update)(struct cgbp*, void*, struct cgbp_callbacks);
-	void (*cleanup)(void*);
-	uint32_t (*get_pixel)(void*, size_t, size_t);
-	void (*set_pixel)(void*, size_t, size_t, uint32_t);
-	struct cgbp_size (*size)(void*);
+	void (*cleanup)(struct cgbp*);
+	uint32_t (*get_pixel)(struct cgbp*, size_t, size_t);
+	void (*set_pixel)(struct cgbp*, size_t, size_t, uint32_t);
+	struct cgbp_size (*size)(struct cgbp*);
 } driver;
 
 struct cgbp {

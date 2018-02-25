@@ -32,7 +32,7 @@ struct epicycle {
 };
 
 void epicycles_init(struct cgbp *c, struct epicycle *e) {
-	struct cgbp_size size = driver.size(c->driver_data);
+	struct cgbp_size size = driver.size(c);
 	e->cx = size.w / 2;
 	e->cy = size.h / 2;
 	e->scale = MIN(size.w, size.h) / 4;
@@ -44,14 +44,14 @@ void epicycles_init(struct cgbp *c, struct epicycle *e) {
 	e->r_mul_delta = .01 / STEPS_PER_FRAME;
 }
 
-void draw_line(void *driver_data, size_t start_x, size_t start_y, size_t end_x,
-               size_t end_y, uint32_t color, struct cgbp_size size) {
+void draw_line(struct cgbp *c, struct cgbp_size size, size_t start_x,
+               size_t start_y, size_t end_x, size_t end_y, uint32_t color) {
 	long delta_x, delta_y, pos, other;
 	delta_x = end_x - start_x;
 	delta_y = end_y - start_y;
 	if(end_x > 0 && (size_t)end_x < size.w - 1 &&
 	  end_y > 0 && (size_t)end_y < size.h - 1)
-		driver.set_pixel(driver_data, end_x, end_y, color);
+		driver.set_pixel(c, end_x, end_y, color);
 	if(ABS(delta_x) < ABS(delta_y))
 		goto use_y;
 	for(pos = start_x; (size_t)pos != end_x; pos += SIGN(delta_x)) {
@@ -59,7 +59,7 @@ void draw_line(void *driver_data, size_t start_x, size_t start_y, size_t end_x,
 		if(pos <= 0 || (size_t)pos >= size.w - 1 ||
 		  other <= 0 || (size_t)other >= size.h - 1)
 			continue;
-		driver.set_pixel(driver_data, pos, other, color);
+		driver.set_pixel(c, pos, other, color);
 	}
 	return;
 use_y:
@@ -68,12 +68,12 @@ use_y:
 		if(other <= 0 || (size_t)other >= size.w - 1 ||
 		  pos <= 0 || (size_t)pos >= size.h - 1)
 			continue;
-		driver.set_pixel(driver_data, other, pos, color);
+		driver.set_pixel(c, other, pos, color);
 	}
 	return;
 }
 
-int epicycles_step(struct cgbp *c, struct epicycle *e, struct cgbp_size size) {
+int epicycles_step(struct cgbp *c, struct cgbp_size size, struct epicycle *e) {
 	float fx, fy;
 	size_t x, y;
 
@@ -87,7 +87,7 @@ int epicycles_step(struct cgbp *c, struct epicycle *e, struct cgbp_size size) {
 	x = fx * e->scale + e->cx;
 	y = fy * e->scale + e->cy;
 	if(e->prev_x != SIZE_MAX && e->prev_y != SIZE_MAX)
-		draw_line(c->driver_data, e->prev_x, e->prev_y, x, y, 0xffffff, size);
+		draw_line(c, size, e->prev_x, e->prev_y, x, y, 0xffffff);
 	e->prev_x = x;
 	e->prev_y = y;
 	e->step++;
@@ -112,7 +112,7 @@ static inline uint32_t blur(uint32_t *c, size_t step) {
 
 int epicycles_update(struct cgbp *c, void *data) {
 	struct epicycle *e = data;
-	struct cgbp_size size = driver.size(c->driver_data);
+	struct cgbp_size size = driver.size(c);
 	size_t i, x, y;
 	uint32_t pline1[size.w], pline2[size.w], *pline_new, *pline_old, *tmp;
 	uint32_t pleft1, pleft2, *pleft_new, *pleft_old;
@@ -122,23 +122,23 @@ int epicycles_update(struct cgbp *c, void *data) {
 	pleft_old = &pleft2;
 	for(y = 0; y < size.h - 1; y++) {
 		for(x = 0; x < size.w; x++)
-			pline_new[x] = driver.get_pixel(c->driver_data, x, y);
+			pline_new[x] = driver.get_pixel(c, x, y);
 		if(y == 0)
 			goto next_y;
 		for(x = 0; x < size.w - 1; x++) {
-			*pleft_new = driver.get_pixel(c->driver_data, x, y);
+			*pleft_new = driver.get_pixel(c, x, y);
 			if(x == 0)
 				goto next_x;
-			driver.set_pixel(c->driver_data, x, y, blur((uint32_t[]){
+			driver.set_pixel(c, x, y, blur((uint32_t[]){
 				pline_old[x - 1],
 				pline_old[x],
 				pline_old[x + 1],
 				*pleft_old,
-				driver.get_pixel(c->driver_data, x, y),
-				driver.get_pixel(c->driver_data, x + 1, y),
-				driver.get_pixel(c->driver_data, x - 1, y + 1),
-				driver.get_pixel(c->driver_data, x, y + 1),
-				driver.get_pixel(c->driver_data, x + 1, y + 1),
+				driver.get_pixel(c, x, y),
+				driver.get_pixel(c, x + 1, y),
+				driver.get_pixel(c, x - 1, y + 1),
+				driver.get_pixel(c, x, y + 1),
+				driver.get_pixel(c, x + 1, y + 1),
 			}, e->step));
 next_x:
 			tmp = pleft_new;
@@ -151,7 +151,7 @@ next_y:
 		pline_old = tmp;
 	}
 	for(i = 0; i < STEPS_PER_FRAME; i++)
-		if(epicycles_step(c, e, size) < 0)
+		if(epicycles_step(c, size, e) < 0)
 			return -1;
 	return 0;
 }

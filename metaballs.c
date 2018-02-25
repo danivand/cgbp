@@ -112,7 +112,7 @@ static inline float ball_dist(struct ball *b, size_t x, size_t y,
 
 int metaballs_update(struct cgbp *c, void *data) {
 	struct metaballs *m = data;
-	struct cgbp_size size = driver.size(c->driver_data);
+	struct cgbp_size size = driver.size(c);
 	size_t i, x, y;
 	long remainder;
 	float dist;
@@ -150,7 +150,7 @@ int metaballs_update(struct cgbp *c, void *data) {
 				dist = 0;
 			else if(dist >= NUM_RGB_CACHE)
 				dist = NUM_RGB_CACHE - 1;
-			driver.set_pixel(c->driver_data, x, y, m->rgb_cache[(size_t)dist]);
+			driver.set_pixel(c, x, y, m->rgb_cache[(size_t)dist]);
 		}
 	return 0;
 }
@@ -180,7 +180,7 @@ int main(void) {
 	struct metaballs m;
 	int ret = EXIT_FAILURE;
 	srand(time(NULL));
-	if(cgbp_init(&c) < 0 || metaballs_init(&m, driver.size(c.driver_data)) < 0)
+	if(cgbp_init(&c) < 0 || metaballs_init(&m, driver.size(&c)) < 0)
 		goto error;
 
 	if(cgbp_main(&c, &m, cb) == 0)
