@@ -100,7 +100,7 @@ int epicycles_step(struct cgbp *c, struct cgbp_size size, struct epicycle *e) {
 }
 
 #define B(x) ((x) & 0xff)
-#define BLUR_FAC 24
+#define BLUR_FAC 128
 static inline uint32_t blur(uint32_t *c, size_t step) {
 	uint32_t x = B(c[0]) / 20 + B(c[1]) / 5 + B(c[2]) / 20 +
 	             B(c[3]) / 5 + BLUR_FAC * B(c[4]) + B(c[5]) / 5 +
