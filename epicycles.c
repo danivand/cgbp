@@ -12,6 +12,7 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "cgbp.h"
 
@@ -49,26 +50,21 @@ void draw_line(struct cgbp *c, struct cgbp_size size, size_t start_x,
 	long delta_x, delta_y, pos, other;
 	delta_x = end_x - start_x;
 	delta_y = end_y - start_y;
-	if(end_x > 0 && (size_t)end_x < size.w - 1 &&
-	  end_y > 0 && (size_t)end_y < size.h - 1)
+	if((size_t)end_x < size.w && (size_t)end_y < size.h)
 		driver.set_pixel(c, end_x, end_y, color);
 	if(ABS(delta_x) < ABS(delta_y))
 		goto use_y;
 	for(pos = start_x; (size_t)pos != end_x; pos += SIGN(delta_x)) {
 		other = start_y + delta_y * ABS(pos - start_x) / ABS(delta_x);
-		if(pos <= 0 || (size_t)pos >= size.w - 1 ||
-		  other <= 0 || (size_t)other >= size.h - 1)
-			continue;
-		driver.set_pixel(c, pos, other, color);
+		if((size_t)pos < size.w && (size_t)other < size.h)
+			driver.set_pixel(c, pos, other, color);
 	}
 	return;
 use_y:
 	for(pos = start_y; (size_t)pos != end_y; pos += SIGN(delta_y)) {
 		other = start_x + delta_x * ABS(pos - start_y) / ABS(delta_y);
-		if(other <= 0 || (size_t)other >= size.w - 1 ||
-		  pos <= 0 || (size_t)pos >= size.h - 1)
-			continue;
-		driver.set_pixel(c, other, pos, color);
+		if((size_t)other < size.w && (size_t)pos < size.h)
+			driver.set_pixel(c, other, pos, color);
 	}
 	return;
 }
@@ -115,37 +111,40 @@ int epicycles_update(struct cgbp *c, void *data) {
 	struct cgbp_size size = driver.size(c);
 	size_t i, x, y;
 	uint32_t pline1[size.w], pline2[size.w], *pline_new, *pline_old, *tmp;
-	uint32_t pleft1, pleft2, *pleft_new, *pleft_old;
+	uint32_t pleft1, pleft2, *pleft_new, *pleft_old, neighbors[9];
 	pline_new = pline1;
 	pline_old = pline2;
 	pleft_new = &pleft1;
 	pleft_old = &pleft2;
-	for(y = 0; y < size.h - 1; y++) {
+	for(y = 0; y < size.h; y++) {
 		for(x = 0; x < size.w; x++)
 			pline_new[x] = driver.get_pixel(c, x, y);
-		if(y == 0)
-			goto next_y;
-		for(x = 0; x < size.w - 1; x++) {
+		for(x = 0; x < size.w; x++) {
 			*pleft_new = driver.get_pixel(c, x, y);
-			if(x == 0)
-				goto next_x;
-			driver.set_pixel(c, x, y, blur((uint32_t[]){
-				pline_old[x - 1],
-				pline_old[x],
-				pline_old[x + 1],
-				*pleft_old,
-				driver.get_pixel(c, x, y),
-				driver.get_pixel(c, x + 1, y),
-				driver.get_pixel(c, x - 1, y + 1),
-				driver.get_pixel(c, x, y + 1),
-				driver.get_pixel(c, x + 1, y + 1),
-			}, e->step));
-next_x:
+			if(y > 0) {
+				neighbors[0] = x > 0 ? pline_old[x - 1] : 0;
+				neighbors[1] = pline_old[x];
+				neighbors[2] = x < size.w - 1 ? pline_old[x + 1] : 0;
+			} else
+				neighbors[0] = neighbors[1] = neighbors[2] = 0;
+
+			neighbors[3] = x > 0 ? *pleft_old : 0;
+			neighbors[4] = driver.get_pixel(c, x, y);
+			neighbors[5] = x < size.w - 1 ? driver.get_pixel(c, x + 1, y) : 0;
+
+			if(y < size.h - 1) {
+				neighbors[6] = x > 0 ? driver.get_pixel(c, x - 1, y + 1) : 0;
+				neighbors[7] = driver.get_pixel(c, x, y + 1);
+				neighbors[8] = x < size.w - 1 ?
+				               driver.get_pixel(c, x + 1, y + 1) : 0;
+			} else
+				neighbors[6] = neighbors[7] = neighbors[8] = 0;
+			driver.set_pixel(c, x, y, blur(neighbors, e->step));
+
 			tmp = pleft_new;
 			pleft_new = pleft_old;
 			pleft_old = tmp;
 		}
-next_y:
 		tmp = pline_new;
 		pline_new = pline_old;
 		pline_old = tmp;
