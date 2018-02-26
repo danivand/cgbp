@@ -163,7 +163,6 @@ int epicycles_action(struct cgbp *c, void *data, char r) {
 	(void)data;
 }
 
-
 int main(void) {
 	struct cgbp c;
 	struct cgbp_callbacks cb = {
