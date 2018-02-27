@@ -140,14 +140,14 @@ void fbdev_cleanup(struct cgbp *c) {
 
 uint32_t fbdev_get_pixel(struct cgbp *c, size_t x, size_t y) {
 	struct fbdev *f = c->driver_data;
-	size_t bytes_pp = f->vinfo.bits_per_pixel / CHAR_BIT;
-	size_t base = y * f->finfo.line_length + x * bytes_pp;
-	size_t value = f->data[base], i;
-	if(x > f->vinfo.xres || y > f->vinfo.yres)
+	size_t bytes_pp = f->vinfo.bits_per_pixel / CHAR_BIT,
+	       base = y * f->finfo.line_length + x * bytes_pp;
+	uint32_t value = 0, i;
+	if(x >= f->vinfo.xres || y >= f->vinfo.yres)
 		return 0;
-	for(i = 1; i < bytes_pp; i++)
-		value = (value << 8) | f->data[base + i];
-	return value;
+	for(i = 0; i < bytes_pp; i++)
+		value |= f->data[base + i] << (8 * i);
+	return value & 0xffffff;
 }
 
 void fbdev_set_pixel(struct cgbp *c, size_t x, size_t y, uint32_t color) {
