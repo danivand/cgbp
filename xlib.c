@@ -212,11 +212,13 @@ void xlib_cleanup(struct cgbp *c) {
 
 uint32_t xlib_get_pixel(struct cgbp *c, size_t cx, size_t cy) {
 	struct xlib *x = c->driver_data;
-	size_t i, bytes_per_pixel = x->img->bits_per_pixel / CHAR_BIT, px;
-	uint32_t value;
-	px = cy * x->img->bytes_per_line + cx * bytes_per_pixel;
-	for(value = x->img->data[px], i = 1; i < bytes_per_pixel; i++)
-		value |= (x->img->data[px + i] & 0xff) << (8 * i);
+	size_t bytes_pp = x->img->bits_per_pixel / CHAR_BIT,
+	       base = cy * x->img->bytes_per_line + cx * bytes_pp;
+	uint32_t value = 0, i;
+	if(cx >= (size_t)x->img->width || cy >= (size_t)x->img->height)
+		return 0;
+	for(i = 0; i < bytes_pp; i++)
+		value |= x->img->data[base + i] << (8 * i);
 	return value & 0xffffff;
 }
 
