@@ -15,7 +15,7 @@ LDLIBS_xlib = -lX11
 LDLIBS_epicycles = -lm
 
 DRIVERS = fbdev xlib
-TARGETS = langtonsant metaballs epicycles
+TARGETS = langtonsant metaballs epicycles reactdiff
 BIN_TARGETS =
 
 RM_FILES = cgbp.o

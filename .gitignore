@@ -9,4 +9,7 @@ langtonsant_xlib
 metaballs_fbdev
 metaballs.o
 metaballs_xlib
+reactdiff_fbdev
+reactdiff.o
+reactdiff_xlib
 xlib.o
