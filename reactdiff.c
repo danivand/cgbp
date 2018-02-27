@@ -49,13 +49,37 @@ int reactdiff_init(struct cgbp *c, struct reactdiff *r) {
 	r->db = .5;
 	r->feed = .055;
 	r->kill = .062;
+#define A_INIT 1
+#define B_INIT 0
+/*
+	r->feed = .0207;
+	r->kill = .0509;
+#define A_INIT 1
+#define B_INIT 0
+*/
+/*
+	// this one features spiral waves after a couple minutes
+	r->feed = .01;
+	r->kill = .036;
+#define A_INIT ((float)rand() / RAND_MAX * .78)
+#define B_INIT ((float)rand() / RAND_MAX * .2)
+*/
+/*
+	r->feed = .011;
+	r->kill = .035;
+#define A_INIT ((float)rand() / RAND_MAX * .84)
+#define B_INIT ((float)rand() / RAND_MAX * .18)
+*/
 	for(i = 0; i < r->w * r->h; i++) {
-		r->abmap[i].a = 1;
-		r->abmap[i].b = 0;
+		r->abmap[i].a = A_INIT;
+		r->abmap[i].b = B_INIT;
 	}
-	for(y = r->h / 2 - 10; y < r->h / 2 + 10; y++)
-		for(x = r->w / 2 - 10; x < r->w / 2 + 10; x++)
+#define SEED_SIZE 100
+	for(y = (r->h - SEED_SIZE) / 2; y < (r->h + SEED_SIZE) / 2; y++)
+		for(x = (r->w - SEED_SIZE) / 2; x < (r->w + SEED_SIZE) / 2; x++) {
+			r->abmap[y * r->w + x].a = 0;
 			r->abmap[y * r->w + x].b = 1;
+		}
 	for(y = 0; (size_t)y < size.h; y++)
 		for(x = 0; (size_t)x < size.w; x++)
 			driver.set_pixel(c, x, y, 0x333333);
