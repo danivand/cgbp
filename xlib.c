@@ -58,8 +58,13 @@ done:
 void invisible_cursor(struct xlib *x) {
 	Pixmap p;
 	XSetWindowAttributes xa;
+	GC gc;
 	XColor d = { .pixel = XBlackPixel(x->disp, x->scr) };
 	p = XCreatePixmap(x->disp, x->win, 1, 1, 1);
+	gc = XCreateGC(x->disp, p, 0, NULL);
+	XSetForeground(x->disp, gc, 0);
+	XFillRectangle(x->disp, p, gc, 0, 0, 1, 1);
+	XFreeGC(x->disp, gc);
 	xa.cursor = XCreatePixmapCursor(x->disp, p, p, &d, &d, 0, 0);
 	XChangeWindowAttributes(x->disp, x->win, CWCursor, &xa);
 	XFreeCursor(x->disp, xa.cursor);
