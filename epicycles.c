@@ -22,8 +22,6 @@
 #define SIGN(x) ((x) < 0 ? -1 : 1)
 #define ABS(x) ((long)(x) < 0 ? -((long)(x)) : ((long)(x)))
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
-#define TO_RGB(r, g, b) \
-	(((uint32_t)(r) << 16) | ((uint32_t)(g) << 8) | (uint32_t)(b))
 
 // http://www.jstor.org/stable/2691465?origin=crossref&seq=1#page_scan_tab_contents
 
