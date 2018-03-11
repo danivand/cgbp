@@ -104,39 +104,44 @@ static inline uint32_t blur(uint32_t *c, size_t step) {
 	(void)step;
 }
 
+static inline void get_neighbors(struct cgbp *c, struct cgbp_size size,
+                                 uint32_t neighbors[], uint32_t *pline,
+                                 uint32_t *pleft, size_t x, size_t y) {
+	if(y > 0) {
+		neighbors[0] = x > 0 ? pline[x - 1] : 0;
+		neighbors[1] = pline[x];
+		neighbors[2] = x < size.w - 1 ? pline[x + 1] : 0;
+	} else
+		neighbors[0] = neighbors[1] = neighbors[2] = 0;
+
+	neighbors[3] = x > 0 ? *pleft : 0;
+	neighbors[4] = driver.get_pixel(c, x, y);
+	neighbors[5] = x < size.w - 1 ? driver.get_pixel(c, x + 1, y) : 0;
+
+	if(y < size.h - 1) {
+		neighbors[6] = x > 0 ? driver.get_pixel(c, x - 1, y + 1) : 0;
+		neighbors[7] = driver.get_pixel(c, x, y + 1);
+		neighbors[8] = x < size.w - 1 ? driver.get_pixel(c, x + 1, y + 1) : 0;
+	} else
+		neighbors[6] = neighbors[7] = neighbors[8] = 0;
+}
+
 int epicycles_update(struct cgbp *c, void *data) {
 	struct epicycle *e = data;
 	struct cgbp_size size = driver.size(c);
 	size_t i, x, y;
-	uint32_t pline1[size.w], pline2[size.w], *pline_new, *pline_old, *tmp;
-	uint32_t pleft1, pleft2, *pleft_new, *pleft_old, neighbors[9];
+	uint32_t pline1[size.w + 1], pline2[size.w + 1], *pline_new, *pline_old,
+	         *pleft_new, *pleft_old, *tmp, neighbors[9];
 	pline_new = pline1;
 	pline_old = pline2;
-	pleft_new = &pleft1;
-	pleft_old = &pleft2;
+	pleft_new = &pline1[size.w];
+	pleft_old = &pline2[size.w];
 	for(y = 0; y < size.h; y++) {
 		for(x = 0; x < size.w; x++)
 			pline_new[x] = driver.get_pixel(c, x, y);
 		for(x = 0; x < size.w; x++) {
 			*pleft_new = driver.get_pixel(c, x, y);
-			if(y > 0) {
-				neighbors[0] = x > 0 ? pline_old[x - 1] : 0;
-				neighbors[1] = pline_old[x];
-				neighbors[2] = x < size.w - 1 ? pline_old[x + 1] : 0;
-			} else
-				neighbors[0] = neighbors[1] = neighbors[2] = 0;
-
-			neighbors[3] = x > 0 ? *pleft_old : 0;
-			neighbors[4] = driver.get_pixel(c, x, y);
-			neighbors[5] = x < size.w - 1 ? driver.get_pixel(c, x + 1, y) : 0;
-
-			if(y < size.h - 1) {
-				neighbors[6] = x > 0 ? driver.get_pixel(c, x - 1, y + 1) : 0;
-				neighbors[7] = driver.get_pixel(c, x, y + 1);
-				neighbors[8] = x < size.w - 1 ?
-				               driver.get_pixel(c, x + 1, y + 1) : 0;
-			} else
-				neighbors[6] = neighbors[7] = neighbors[8] = 0;
+			get_neighbors(c, size, neighbors, pline_old, pleft_old, x, y);
 			driver.set_pixel(c, x, y, blur(neighbors, e->step));
 
 			tmp = pleft_new;
