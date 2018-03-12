@@ -114,7 +114,6 @@ static inline void get_neighbors(struct reactdiff *r, struct rdxel *neighbors,
 	neighbors[1] = (a & TOP) == 0 ? pline[x] : z;
 	neighbors[2] = (a & (TOP|RIGHT)) == 0 ? pline[x + 1] : z;
 	neighbors[3] = (a & LEFT) == 0 ? *pleft : z;
-	//neighbors[4] = r->abmap[pos];
 	neighbors[4] = (a & RIGHT) == 0 ? r->abmap[pos + 1] : z;
 	pos += r->w;
 	neighbors[5] = (a & (BOTTOM|LEFT)) == 0 ? r->abmap[pos - 1] : z;
@@ -122,21 +121,7 @@ static inline void get_neighbors(struct reactdiff *r, struct rdxel *neighbors,
 	neighbors[7] = (a & (BOTTOM|RIGHT)) == 0 ? r->abmap[pos + 1] : z;
 }
 
-static inline uint32_t colorify(struct rdxel *ptr) {
-	uint8_t a = (ptr->a > ptr->b ? ptr->a - ptr->b : 0) * 0xff;
-/*
-	return ((int)((ptr->a < 0 ? 0 : ptr->a > 1 ? 1 : ptr->a) * 0xff) << 16) |
-	       ((int)(ptr->b < 0 ? 0 : ptr->b > 1 ? 1 : ptr->b) * 0xff);
-	a = (ptr->a < 0 ? 0 : ptr->a > 1 ? 1 : ptr->a) * 0xff;
-	b = (ptr->b < 0 ? 0 : ptr->b > 1 ? 1 : ptr->b) * 0xff;
-	a = ptr->a * 0xff;
-	b = ptr->b * 0xff;
-*/
-	return (a << 16) | (a << 8) | a;
-}
-
-int reactdiff_step(struct cgbp *c, struct reactdiff *r) {
-	struct cgbp_size size = driver.size(c);
+int reactdiff_step(struct reactdiff *r) {
 	struct rdxel pline1[r->w + 1], pline2[r->w + 1], *pline_new, *pline_old,
 	             *pleft_new, *pleft_old, *tmp, lab, neighbors[8], *p;
 	size_t x, y;
@@ -156,8 +141,6 @@ int reactdiff_step(struct cgbp *c, struct reactdiff *r) {
 			abb = p->a * p->b * p->b;
 			p->a += r->da * lab.a - abb + r->feed * (1 - p->a);
 			p->b += r->db * lab.b + abb - (r->kill + r->feed) * p->b;
-			if(r->l + x < size.w && r->t + y < size.h)
-				driver.set_pixel(c, r->l + x, r->t + y, colorify(p));
 			tmp = pleft_new;
 			pleft_new = pleft_old;
 			pleft_old = tmp;
@@ -169,12 +152,28 @@ int reactdiff_step(struct cgbp *c, struct reactdiff *r) {
 	return 0;
 }
 
+static inline uint32_t colorify(struct rdxel ptr) {
+	uint8_t a = (ptr.a > ptr.b ? ptr.a - ptr.b : 0) * 0xff;
+	return (a << 16) | (a << 8) | a;
+}
+
+void reactdiff_draw(struct cgbp *c, struct reactdiff *r) {
+	struct cgbp_size size = driver.size(c);
+	size_t x, y;
+	for(y = 0; y < r->h; y++)
+		for(x = 0; x < r->w; x++)
+			if(r->l + x < size.w && r->t + y < size.h)
+				driver.set_pixel(c, r->l + x, r->t + y,
+				                 colorify(r->abmap[y * r->w + x]));
+}
+
 int reactdiff_update(struct cgbp *c, void *data) {
 	struct reactdiff *r = data;
 	uint8_t i;
-	for(i = 0; i < 8; i++)
-		if(reactdiff_step(c, r) < 0)
+	for(i = 0; i < STEPS_PER_FRAME; i++)
+		if(reactdiff_step(r) < 0)
 			return -1;
+	reactdiff_draw(c, r);
 	return 0;
 }
 
