@@ -61,17 +61,10 @@ int reactdiff_init(struct cgbp *c, struct reactdiff *r) {
 #define B_INIT 0
 #define SEED_SIZE 20
 */
-/*
-	// this one features spiral waves after a couple minutes
-	r->feed = .01;
-	r->kill = .036;
-#define A_INIT ((float)rand() / RAND_MAX * .78)
-#define B_INIT ((float)rand() / RAND_MAX * .2)
-#define SEED_SIZE 0
-*/
-	r->feed = .0093;
-	r->kill = .03625;
-#define A_INIT ((float)rand() / RAND_MAX * .78)
+	// this one features spiral waves when it doesn't die off
+	r->feed = .014;
+	r->kill = .042;
+#define A_INIT ((float)rand() / RAND_MAX)
 #define B_INIT ((float)rand() / RAND_MAX * .2)
 #define SEED_SIZE 0
 /*
@@ -94,10 +87,9 @@ int reactdiff_init(struct cgbp *c, struct reactdiff *r) {
 		r->abmap[i].b = B_INIT;
 	}
 	for(y = (r->h - SEED_SIZE) / 2; y < (r->h + SEED_SIZE) / 2; y++)
-		for(x = (r->w - SEED_SIZE) / 2; x < (r->w + SEED_SIZE) / 2; x++) {
-			r->abmap[y * r->w + x].a = 0;
-			r->abmap[y * r->w + x].b = 1;
-		}
+		for(x = (r->w - SEED_SIZE) / 2; x < (r->w + SEED_SIZE) / 2; x++)
+			memcpy(&r->abmap[y * r->w + x], &(struct rdxel){ 0, 1 },
+			       sizeof(struct rdxel));
 	for(y = 0; (size_t)y < size.h; y++)
 		for(x = 0; (size_t)x < size.w; x++)
 			driver.set_pixel(c, x, y, 0x333333);
@@ -118,43 +110,43 @@ static inline struct rdxel laplace(struct rdxel *neighbors, struct rdxel *p) {
 
 static inline void get_neighbors(struct reactdiff *r, struct rdxel *neighbors,
                                  struct rdxel *pline, struct rdxel *pleft,
-                                 size_t x, size_t y) {
-	struct rdxel z = { 0, 0 };
-	size_t pos = y * r->w + x;
-	enum {
-		TOP    = (1 << 0),
-		BOTTOM = (1 << 1),
-		LEFT   = (1 << 2),
-		RIGHT  = (1 << 3),
-	} a = (y == 0) * TOP | (y == r->h - 1) * BOTTOM |
-	      (x == 0) * LEFT | (x == r->w - 1) * RIGHT;
-	neighbors[0] = (a & (TOP|LEFT)) == 0 ? pline[x - 1] : z;
-	neighbors[1] = (a & TOP) == 0 ? pline[x] : z;
-	neighbors[2] = (a & (TOP|RIGHT)) == 0 ? pline[x + 1] : z;
-	neighbors[3] = (a & LEFT) == 0 ? *pleft : z;
-	neighbors[4] = (a & RIGHT) == 0 ? r->abmap[pos + 1] : z;
-	pos += r->w;
-	neighbors[5] = (a & (BOTTOM|LEFT)) == 0 ? r->abmap[pos - 1] : z;
-	neighbors[6] = (a & BOTTOM) == 0 ? r->abmap[pos] : z;
-	neighbors[7] = (a & (BOTTOM|RIGHT)) == 0 ? r->abmap[pos + 1] : z;
+                                 struct rdxel *firstline, size_t x, size_t y) {
+	size_t lc = r->w - 1, lr = r->h - 1;
+	struct rdxel *row = &r->abmap[y * r->w],
+	             *row_above = y == 0 ? &r->abmap[lr * r->w] : pline,
+	             *row_beneath = y == lr ? firstline : row + r->w;
+	size_t column_left = x == 0 ? lc : x - 1,
+	       column_right = x == lc ? 0 : x + 1;
+	neighbors[0] = row_above[column_left];
+	neighbors[1] = row_above[x];
+	neighbors[2] = row_above[column_right];
+	neighbors[3] = x == 0 ? row[lc] : *pleft;
+	neighbors[4] = row[column_right];
+	neighbors[5] = row_beneath[column_left];
+	neighbors[6] = row_beneath[x];
+	neighbors[7] = row_beneath[column_right];
 }
 
 int reactdiff_step(struct reactdiff *r) {
 	struct rdxel pline1[r->w + 1], pline2[r->w + 1], *pline_new, *pline_old,
-	             *pleft_new, *pleft_old, *tmp, lab, neighbors[8], *p;
+	             *pleft_new, *pleft_old, *tmp, lab, neighbors[8], *p, *row;
+	struct rdxel firstline[r->w];
 	size_t x, y;
 	float abb;
 	pline_new = pline1;
 	pline_old = pline2;
 	pleft_new = &pline1[r->w];
 	pleft_old = &pline2[r->w];
+	for(x = 0; x < r->w; x++)
+		firstline[x] = r->abmap[x];
 	for(y = 0; y < r->h; y++) {
+		row = &r->abmap[y * r->w];
 		for(x = 0; x < r->w; x++)
-			pline_new[x] = r->abmap[y * r->w + x];
+			pline_new[x] = row[x];
 		for(x = 0; x < r->w; x++) {
-			p = &r->abmap[y * r->w + x];
+			p = &row[x];
 			*pleft_new = *p;
-			get_neighbors(r, neighbors, pline_old, pleft_old, x, y);
+			get_neighbors(r, neighbors, pline_old, pleft_old, firstline, x, y);
 			lab = laplace(neighbors, p);
 			abb = p->a * p->b * p->b;
 			p->a += r->da * lab.a - abb + r->feed * (1 - p->a);
@@ -172,17 +164,19 @@ int reactdiff_step(struct reactdiff *r) {
 
 static inline uint32_t colorify(struct rdxel ptr) {
 	uint8_t a = (ptr.a > ptr.b ? ptr.a - ptr.b : 0) * 0xff;
-	return (a << 16) | (a << 8) | a;
+	return TO_RGB(a, a, a);
 }
 
 void reactdiff_draw(struct cgbp *c, struct reactdiff *r) {
 	struct cgbp_size size = driver.size(c);
+	struct rdxel *row;
 	size_t x, y;
-	for(y = 0; y < r->h; y++)
+	for(y = 0; y < r->h; y++) {
+		row = &r->abmap[y * r->w];
 		for(x = 0; x < r->w; x++)
 			if(r->l + x < size.w && r->t + y < size.h)
-				driver.set_pixel(c, r->l + x, r->t + y,
-				                 colorify(r->abmap[y * r->w + x]));
+				driver.set_pixel(c, r->l + x, r->t + y, colorify(row[x]));
+	}
 }
 
 int reactdiff_update(struct cgbp *c, void *data) {
