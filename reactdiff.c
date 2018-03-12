@@ -191,16 +191,13 @@ void reactdiff_cleanup(struct reactdiff *r) {
 
 int main(void) {
 	struct cgbp c;
-	struct cgbp_callbacks cb = {
-		.update = reactdiff_update,
-		.action = reactdiff_action,
-	};
 	struct reactdiff r = { .abmap = NULL, };
 	int ret = EXIT_FAILURE;
 	srand(time(NULL));
 	if(cgbp_init(&c) < 0 || reactdiff_init(&c, &r) < 0)
 		goto error;
-	if(cgbp_main(&c, &r, cb) == 0)
+	if(cgbp_main(&c, &r,
+	  (struct cgbp_callbacks){ reactdiff_update, reactdiff_action }) == 0)
 		ret = EXIT_SUCCESS;
 error:
 	cgbp_cleanup(&c);
