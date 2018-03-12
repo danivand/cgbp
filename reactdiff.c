@@ -17,7 +17,7 @@
 #include "cgbp.h"
 
 #define STEP_DIV 256
-#define STEPS_PER_FRAME 16
+#define STEPS_PER_FRAME 8
 
 #define SIGN(x) ((x) < 0 ? -1 : 1)
 #define ABS(x) ((long)(x) < 0 ? -((long)(x)) : ((long)(x)))
@@ -47,15 +47,19 @@ int reactdiff_init(struct cgbp *c, struct reactdiff *r) {
 	}
 	r->da = 1.0;
 	r->db = .5;
+/*
 	r->feed = .055;
 	r->kill = .062;
 #define A_INIT 1
 #define B_INIT 0
+#define SEED_SIZE 20
+*/
 /*
 	r->feed = .0207;
 	r->kill = .0509;
 #define A_INIT 1
 #define B_INIT 0
+#define SEED_SIZE 20
 */
 /*
 	// this one features spiral waves after a couple minutes
@@ -63,18 +67,32 @@ int reactdiff_init(struct cgbp *c, struct reactdiff *r) {
 	r->kill = .036;
 #define A_INIT ((float)rand() / RAND_MAX * .78)
 #define B_INIT ((float)rand() / RAND_MAX * .2)
+#define SEED_SIZE 0
+*/
+	r->feed = .0093;
+	r->kill = .03625;
+#define A_INIT ((float)rand() / RAND_MAX * .78)
+#define B_INIT ((float)rand() / RAND_MAX * .2)
+#define SEED_SIZE 0
+/*
+	// absolutely gorgeous oscillation
+	r->feed = .01;
+	r->kill = .0325;
+#define A_INIT ((float)rand() / RAND_MAX * .78)
+#define B_INIT ((float)rand() / RAND_MAX * .2)
+#define SEED_SIZE 0
 */
 /*
 	r->feed = .011;
 	r->kill = .035;
 #define A_INIT ((float)rand() / RAND_MAX * .84)
 #define B_INIT ((float)rand() / RAND_MAX * .18)
+#define SEED_SIZE 0
 */
 	for(i = 0; i < r->w * r->h; i++) {
 		r->abmap[i].a = A_INIT;
 		r->abmap[i].b = B_INIT;
 	}
-#define SEED_SIZE 100
 	for(y = (r->h - SEED_SIZE) / 2; y < (r->h + SEED_SIZE) / 2; y++)
 		for(x = (r->w - SEED_SIZE) / 2; x < (r->w + SEED_SIZE) / 2; x++) {
 			r->abmap[y * r->w + x].a = 0;
