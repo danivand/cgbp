@@ -15,6 +15,7 @@
 #include <string.h>
 
 #include "cgbp.h"
+#include "hsv.h"
 
 #define STEP_DIV 256
 #define STEPS_PER_FRAME 8
@@ -25,19 +26,23 @@
 #define TO_RGB(r, g, b) \
 	(((uint32_t)(r) << 16) | ((uint32_t)(g) << 8) | (uint32_t)(b))
 
+#define RINT int32_t
+#define RINT_UNIT 49152
+#define RINT_MUL(a, b) ((intmax_t)(a) * (b) / RINT_UNIT)
+
 struct reactdiff {
 	struct rdxel {
-		float a, b;
+		RINT a, b;
 	} *abmap;
-	float da, db, feed, kill;
+	RINT da, db, feed, kill;
 	size_t l, t, w, h;
 };
 
 int reactdiff_init(struct cgbp *c, struct reactdiff *r) {
 	struct cgbp_size size = driver.size(c);
 	size_t i, x, y;
-	r->w = 640;
-	r->h = 480;
+	r->w = MIN(600, size.w);
+	r->h = MIN(600, size.h);
 	r->l = (size.w - r->w) / 2;
 	r->t = (size.h - r->h) / 2;
 	r->abmap = malloc(sizeof *r->abmap * r->w * r->h);
@@ -45,41 +50,41 @@ int reactdiff_init(struct cgbp *c, struct reactdiff *r) {
 		perror("malloc");
 		return -1;
 	}
-	r->da = 1.0;
-	r->db = .5;
+	r->da = RINT_UNIT;
+	r->db = .5 * RINT_UNIT;
 /*
-	r->feed = .055;
-	r->kill = .062;
-#define A_INIT 1
+	r->feed = .055 * RINT_UNIT;
+	r->kill = .062 * RINT_UNIT;
+#define A_INIT RINT_UNIT
 #define B_INIT 0
 #define SEED_SIZE 20
 */
 /*
-	r->feed = .0207;
-	r->kill = .0509;
-#define A_INIT 1
+	r->feed = .0207 * RINT_UNIT;
+	r->kill = .0509 * RINT_UNIT;
+#define A_INIT RINT_UNIT
 #define B_INIT 0
 #define SEED_SIZE 20
 */
+/*
 	// this one features spiral waves when it doesn't die off
-	r->feed = .014;
-	r->kill = .042;
-#define A_INIT ((float)rand() / RAND_MAX)
-#define B_INIT ((float)rand() / RAND_MAX * .2)
-#define SEED_SIZE 0
-/*
-	// absolutely gorgeous oscillation
-	r->feed = .01;
-	r->kill = .0325;
-#define A_INIT ((float)rand() / RAND_MAX * .78)
-#define B_INIT ((float)rand() / RAND_MAX * .2)
+	r->feed = .012 * RINT_UNIT;
+	r->kill = .041 * RINT_UNIT;
+#define A_INIT ((float)rand() * RINT_UNIT / RAND_MAX)
+#define B_INIT ((float)rand() * RINT_UNIT * .2 / RAND_MAX)
 #define SEED_SIZE 0
 */
+	// absolutely gorgeous oscillation
+	r->feed = .01 * RINT_UNIT;
+	r->kill = .0325 * RINT_UNIT;
+#define A_INIT ((float)rand() * .78 * RINT_UNIT / RAND_MAX)
+#define B_INIT ((float)rand() * .2 * RINT_UNIT / RAND_MAX)
+#define SEED_SIZE 0
 /*
-	r->feed = .011;
-	r->kill = .035;
-#define A_INIT ((float)rand() / RAND_MAX * .84)
-#define B_INIT ((float)rand() / RAND_MAX * .18)
+	r->feed = .011 * RINT_UNIT;
+	r->kill = .035 * RINT_UNIT;
+#define A_INIT ((float)rand() * RINT_UNIT * .84 / RAND_MAX)
+#define B_INIT ((float)rand() * RINT_UNIT * .18 / RAND_MAX)
 #define SEED_SIZE 0
 */
 	for(i = 0; i < r->w * r->h; i++) {
@@ -87,9 +92,10 @@ int reactdiff_init(struct cgbp *c, struct reactdiff *r) {
 		r->abmap[i].b = B_INIT;
 	}
 	for(y = (r->h - SEED_SIZE) / 2; y < (r->h + SEED_SIZE) / 2; y++)
-		for(x = (r->w - SEED_SIZE) / 2; x < (r->w + SEED_SIZE) / 2; x++)
-			memcpy(&r->abmap[y * r->w + x], &(struct rdxel){ 0, 1 },
-			       sizeof(struct rdxel));
+		for(x = (r->w - SEED_SIZE) / 2; x < (r->w + SEED_SIZE) / 2; x++) {
+			r->abmap[y * r->w + x].a = 0;
+			r->abmap[y * r->w + x].b = RINT_UNIT;
+		}
 	for(y = 0; (size_t)y < size.h; y++)
 		for(x = 0; (size_t)x < size.w; x++)
 			driver.set_pixel(c, x, y, 0x333333);
@@ -97,9 +103,9 @@ int reactdiff_init(struct cgbp *c, struct reactdiff *r) {
 }
 
 #define LAPLACE(v, p, x) ( \
-	+ (v)[0].x / 20 + (v)[1].x / 5 + (v)[2].x / 20 \
-	+ (v)[3].x / 5  - (p).x        + (v)[4].x / 5 \
-	+ (v)[5].x / 20 + (v)[6].x / 5 + (v)[7].x / 20 \
+	+ ((v)[0].x + (v)[2].x + (v)[5].x + (v)[7].x) / 20 + \
+	+ ((v)[1].x + (v)[3].x + (v)[4].x + (v)[6].x) / 5 \
+	- (p).x \
 )
 static inline struct rdxel laplace(struct rdxel *neighbors, struct rdxel *p) {
 	return (struct rdxel){
@@ -132,7 +138,7 @@ int reactdiff_step(struct reactdiff *r) {
 	             *pleft_new, *pleft_old, *tmp, lab, neighbors[8], *p, *row;
 	struct rdxel firstline[r->w];
 	size_t x, y;
-	float abb;
+	RINT abb;
 	pline_new = pline1;
 	pline_old = pline2;
 	pleft_new = &pline1[r->w];
@@ -148,9 +154,18 @@ int reactdiff_step(struct reactdiff *r) {
 			*pleft_new = *p;
 			get_neighbors(r, neighbors, pline_old, pleft_old, firstline, x, y);
 			lab = laplace(neighbors, p);
-			abb = p->a * p->b * p->b;
-			p->a += r->da * lab.a - abb + r->feed * (1 - p->a);
-			p->b += r->db * lab.b + abb - (r->kill + r->feed) * p->b;
+			abb = RINT_MUL(p->a, RINT_MUL(p->b, p->b));
+			p->a += RINT_MUL(r->da, lab.a) - abb + RINT_MUL(r->feed, RINT_UNIT - p->a);
+			p->b += RINT_MUL(r->db, lab.b) + abb - RINT_MUL(r->kill + r->feed, p->b);
+			if(p->a < 0)
+				p->a = 0;
+			else if(p->a >= RINT_UNIT)
+				p->a = RINT_UNIT - 1;
+			if(p->b < 0)
+				p->b = 0;
+			else if(p->b >= RINT_UNIT)
+				p->b = RINT_UNIT - 1;
+
 			tmp = pleft_new;
 			pleft_new = pleft_old;
 			pleft_old = tmp;
@@ -163,8 +178,14 @@ int reactdiff_step(struct reactdiff *r) {
 }
 
 static inline uint32_t colorify(struct rdxel ptr) {
-	uint8_t a = (ptr.a > ptr.b ? ptr.a - ptr.b : 0) * 0xff;
+/*
+	uint8_t a = (intmax_t)(ptr.a > ptr.b ? ptr.a - ptr.b : 0) * 0xff /
+	            RINT_UNIT;
 	return TO_RGB(a, a, a);
+*/
+	double rgb[3];
+	hsv_to_rgb(rgb, (double)ptr.a / RINT_UNIT, 1.0, (double)ptr.b / RINT_UNIT);
+	return TO_RGB(rgb[0] * 0xff, rgb[1] * 0xff, rgb[2] * 0xff);
 }
 
 void reactdiff_draw(struct cgbp *c, struct reactdiff *r) {
