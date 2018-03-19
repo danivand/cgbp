@@ -6,6 +6,9 @@ fbdev.o
 langtonsant_fbdev
 langtonsant.o
 langtonsant_xlib
+lorenz_fbdev
+lorenz.o
+lorenz_xlib
 metaballs_fbdev
 metaballs.o
 metaballs_xlib

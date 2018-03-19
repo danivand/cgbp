@@ -13,9 +13,10 @@ LDFLAGS = $(PROD_LDFLAGS)
 LDLIBS = -lrt
 LDLIBS_xlib = -lX11
 LDLIBS_epicycles = -lm
+LDLIBS_lorenz = -lm
 
 DRIVERS = fbdev xlib
-TARGETS = langtonsant metaballs epicycles reactdiff
+TARGETS = langtonsant metaballs epicycles reactdiff lorenz
 BIN_TARGETS =
 
 RM_FILES = cgbp.o
