@@ -183,7 +183,7 @@ static inline uint32_t colorify(struct rdxel ptr) {
 	            RINT_UNIT;
 	return TO_RGB(a, a, a);
 */
-	double rgb[3];
+	double rgb[3] = { 0 };
 	hsv_to_rgb(rgb, (double)ptr.a / RINT_UNIT, 1.0, (double)ptr.b / RINT_UNIT);
 	return TO_RGB(rgb[0] * 0xff, rgb[1] * 0xff, rgb[2] * 0xff);
 }
