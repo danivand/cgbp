@@ -140,7 +140,7 @@ static inline struct point3d scale(float scale, struct point3d p) {
 }
 
 #define CENTERX(x, s) (x + (s).w / 2)
-#define CENTERY(y, s) (y + (s).h / 2)
+#define CENTERY(y, s) ((s).h / 2 - y)
 static inline void lorenz_draw(struct cgbp *c, struct cgbp_size size,
                                struct lorenz *l) {
 	struct point2d new, old;
