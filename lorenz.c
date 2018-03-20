@@ -31,7 +31,7 @@ struct lorenz {
 	} c;
 	float dt, maxext;
 	struct point_bucket {
-		struct point3d p[8];
+		struct point3d p[1024];
 		size_t num;
 		struct point_bucket *next;
 	} bucket, *last;
